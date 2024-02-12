@@ -13,7 +13,7 @@ import { parseBody } from './utils/parseBody';
 import { validateUser } from './utils/validateUser';
 const PORT = process.env.PORT || 4000;
 
-const usersDB: IUserDB[] = [];
+let usersDB: IUserDB[] = [];
 
 const handleRequest = async (res: ServerResponse, req: IncomingMessage) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -112,9 +112,36 @@ const handleRequest = async (res: ServerResponse, req: IncomingMessage) => {
       break;
     }
 
-    case 'DELETE':
-      console.log('DELETE');
+    case 'DELETE': {
+      if (!req.url?.startsWith('/api/users/')) {
+        responseRouteNotFound(res);
+        return;
+      }
+      const splittedURL = req.url.split('/');
+
+      if (splittedURL.length > 4) {
+        responseRouteNotFound(res);
+        return;
+      }
+
+      const providedId = splittedURL[3];
+      if (!(providedId && validateUUID(providedId))) {
+        responseNotValidUUID(res);
+        return;
+      }
+
+      const selectedUser = usersDB.find((user) => user.id === providedId);
+
+      if (selectedUser) {
+        usersDB = usersDB.filter((_user) => _user.id !== providedId);
+        res.statusCode = STATUS_CODE.NO_CONTENT;
+        res.end();
+      } else {
+        responseProvidedIdNotFound(res);
+      }
       break;
+    }
+
     default:
       console.log('DEFAULT');
       res.statusCode = STATUS_CODE.INTERNAL_SERVER_ERROR;
