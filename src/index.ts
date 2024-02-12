@@ -2,7 +2,12 @@ import http, { ServerResponse, IncomingMessage } from 'http';
 import { STATUS_CODE } from './constants';
 import { v4 as uuidv4, validate as validateUUID } from 'uuid';
 import 'dotenv/config';
-import { responseRouteNotFound } from './errors';
+import {
+  responseNotValidUUID,
+  responseNotValidUser,
+  responseProvidedIdNotFound,
+  responseRouteNotFound,
+} from './errors';
 import { IUser, IUserDB } from './interfaces';
 import { parseBody } from './utils/parseBody';
 import { validateUser } from './utils/validateUser';
@@ -65,9 +70,48 @@ const handleRequest = async (res: ServerResponse, req: IncomingMessage) => {
       break;
     }
 
-    case 'PUT':
-      console.log('PUT');
+    case 'PUT': {
+      if (!req.url?.startsWith('/api/users/')) {
+        responseRouteNotFound(res);
+        return;
+      }
+
+      const splittedURL = req.url.split('/');
+      if (splittedURL.length > 4) {
+        responseRouteNotFound(res);
+        return;
+      }
+
+      const providedId = splittedURL[3];
+      if (!(providedId && validateUUID(providedId))) {
+        responseNotValidUUID(res);
+        return;
+      }
+
+      const selectedUser = usersDB.find((user) => user.id === providedId);
+
+      if (selectedUser) {
+        const user = await parseBody(req);
+        const { isValidUser, errorArray } = validateUser(user);
+
+        if (isValidUser) {
+          usersDB.forEach((_user, index) => {
+            if (_user.id === selectedUser.id)
+              usersDB[index] = { ..._user, ...(user as IUser) };
+          });
+          const updatedUser = usersDB.find((user) => user.id === providedId);
+          res.statusCode = STATUS_CODE.OK;
+          res.end(JSON.stringify(updatedUser));
+        } else {
+          responseNotValidUser(res, errorArray);
+        }
+      } else {
+        responseProvidedIdNotFound(res);
+      }
+
       break;
+    }
+
     case 'DELETE':
       console.log('DELETE');
       break;
