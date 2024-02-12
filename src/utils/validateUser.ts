@@ -27,6 +27,7 @@ export const validateUser = (user: unknown) => {
         errorArray.push(
           `User object should contain only this keys: ${allowedKeys.join(', ')}`,
         );
+        break;
       }
     }
   }
