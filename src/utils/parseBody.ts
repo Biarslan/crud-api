@@ -1,3 +1,4 @@
+import { JSON_PARSE_ERROR_MESSAGE } from '../constants';
 import { IncomingMessage } from 'http';
 
 export const parseBody = async (req: IncomingMessage) => {
@@ -11,7 +12,7 @@ export const parseBody = async (req: IncomingMessage) => {
         try {
           resolve(JSON.parse(body));
         } catch (err) {
-          reject(err);
+          reject(new Error(JSON_PARSE_ERROR_MESSAGE));
         }
       });
     } catch (err) {

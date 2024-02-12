@@ -6,3 +6,5 @@ export enum STATUS_CODE {
   NOT_FOUND = 404,
   INTERNAL_SERVER_ERROR = 500,
 }
+
+export const JSON_PARSE_ERROR_MESSAGE = 'You provided JSON of incorrect format';
