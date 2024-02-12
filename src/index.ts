@@ -1,34 +1,16 @@
-import http from 'http';
-import { validate as validateUUID } from 'uuid';
-// import { v4 as uuidv4, validate } from 'uuid';
+import http, { ServerResponse, IncomingMessage } from 'http';
+import { STATUS_CODE } from './constants';
+import { v4 as uuidv4, validate as validateUUID } from 'uuid';
 import 'dotenv/config';
-
+import { responseRouteNotFound } from './errors';
+import { IUser, IUserDB } from './interfaces';
+import { parseBody } from './utils/parseBody';
+import { validateUser } from './utils/validateUser';
 const PORT = process.env.PORT || 4000;
 
-enum STATUS_CODE {
-  OK = 200,
-  CREATED = 201,
-  NO_CONTENT = 204,
-  BAD_REQUEST = 400,
-  NOT_FOUND = 404,
-  INTERNAL_SERVER_ERROR = 500,
-}
+const usersDB: IUserDB[] = [];
 
-// type StatusCodeType = keyof typeof STATUS_CODE;
-
-// const sendResponse = (response: ServerResponse, status: StatusCodeType, body:) => {
-
-// };
-
-interface IUser {
-  id: string;
-  username: string;
-  age: number;
-  hobbies: string[];
-}
-
-const usersDB: IUser[] = [];
-const server = http.createServer((req, res) => {
+const handleRequest = async (res: ServerResponse, req: IncomingMessage) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Content-Type', 'application/json');
 
@@ -41,10 +23,8 @@ const server = http.createServer((req, res) => {
       } else if (req.url?.startsWith('/api/users/')) {
         const splittedURL = req.url.split('/');
         const providedId = splittedURL[3];
-        if (splittedURL.length > 4) {
-          res.statusCode = STATUS_CODE.NOT_FOUND;
-          res.end(JSON.stringify({ error: 'Route not found' }));
-        } else if (providedId && validateUUID(providedId)) {
+        if (splittedURL.length > 4) responseRouteNotFound(res);
+        else if (providedId && validateUUID(providedId)) {
           const selectedUser = usersDB.find((user) => user.id === providedId);
           if (selectedUser) {
             res.statusCode = STATUS_CODE.OK;
@@ -60,16 +40,31 @@ const server = http.createServer((req, res) => {
           res.end(JSON.stringify({ error: 'Provided id is not valid uuid' }));
         }
       } else {
-        res.statusCode = STATUS_CODE.NOT_FOUND;
-        res.end(JSON.stringify({ error: 'Route not found' }));
+        responseRouteNotFound(res);
       }
       break;
     }
 
-    case 'POST':
-      console.log('POST');
+    case 'POST': {
+      if (req.url === '/api/users') {
+        const user = await parseBody(req);
+        const { isValidUser, errorArray } = validateUser(user);
 
+        if (isValidUser) {
+          const newUser: IUserDB = { id: uuidv4(), ...(user as IUser) };
+          usersDB.push(newUser);
+          res.statusCode = STATUS_CODE.CREATED;
+          res.end(JSON.stringify(newUser));
+        } else {
+          res.statusCode = STATUS_CODE.BAD_REQUEST;
+          res.end(JSON.stringify({ error: errorArray.join('. ') }));
+        }
+      } else {
+        responseRouteNotFound(res);
+      }
       break;
+    }
+
     case 'PUT':
       console.log('PUT');
       break;
@@ -81,6 +76,13 @@ const server = http.createServer((req, res) => {
       res.statusCode = STATUS_CODE.INTERNAL_SERVER_ERROR;
       res.end(JSON.stringify({ error: 'This method does not supports' }));
   }
+};
+
+const server = http.createServer((req, res) => {
+  handleRequest(res, req).catch(() => {
+    res.statusCode = STATUS_CODE.INTERNAL_SERVER_ERROR;
+    res.end(JSON.stringify({ error: 'Internal Server error occurred' }));
+  });
 });
 
 server.listen(PORT, () => {
