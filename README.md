@@ -45,8 +45,8 @@ npm run test
 
 `{
     id: string,
-    username:string
-    age: number
+    username:string,
+    age: number,
     hobbies: string[]
 }`
 
@@ -64,10 +64,10 @@ You can set any valid port in `.env` file
 ## Status Codes
 
 - `200` :
-  - Successful `GET` all users or one user by `id`
-  - Successful `PUT` on updating user by `id`
+  - Successful `GET` all users or one user by `userId`
+  - Successful `PUT` on updating user by `userId`
 - `201` : Successful `POST` on creating new user
-- `204` : Successful `DELETE` user by `id`
+- `204` : Successful `DELETE` user by `userId`
 - `400` :
   - `GET`, `PUT`, `DELETE` request with invalid (not uuid) `userId`
   - `POST` request `body` does not contain required fields
